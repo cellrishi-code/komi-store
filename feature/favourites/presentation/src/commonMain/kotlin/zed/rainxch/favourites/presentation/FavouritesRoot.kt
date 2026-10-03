@@ -53,7 +53,7 @@ import zed.rainxch.githubstore.core.presentation.res.*
 @Composable
 fun FavouritesRoot(
     onNavigateBack: () -> Unit,
-    onNavigateToDetails: (repoId: Long) -> Unit,
+    onNavigateToDetails: (repo: FavoriteRepo) -> Unit,
     onNavigateToDeveloperProfile: (username: String) -> Unit,
     onNavigateToImportStars: () -> Unit,
     viewModel: FavouritesViewModel = koinViewModel(),
