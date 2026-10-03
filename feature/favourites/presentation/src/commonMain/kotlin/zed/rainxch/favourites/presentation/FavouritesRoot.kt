@@ -69,7 +69,7 @@ fun FavouritesRoot(
                 }
 
                 is FavouritesAction.OnRepositoryClick -> {
-                    onNavigateToDetails(action.favouriteRepository.repoId)
+                    onNavigateToDetails(action.favouriteRepository)
                 }
 
                 is FavouritesAction.OnDeveloperProfileClick -> {
