@@ -36,7 +36,7 @@ import zed.rainxch.recentlyviewed.presentation.components.RecentlyViewedItem
 @Composable
 fun RecentlyViewedRoot(
     onNavigateBack: () -> Unit,
-    onNavigateToDetails: (repoId: Long) -> Unit,
+    onNavigateToDetails: (repo: SeenRepo) -> Unit,
     onNavigateToDeveloperProfile: (username: String) -> Unit,
     viewModel: RecentlyViewedViewModel = koinViewModel(),
 ) {
