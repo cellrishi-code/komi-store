@@ -51,7 +51,7 @@ fun RecentlyViewedRoot(
                 }
 
                 is RecentlyViewedAction.OnRepositoryClick -> {
-                    onNavigateToDetails(action.repo.repoId)
+                    onNavigateToDetails(action.repo)
                 }
 
                 is RecentlyViewedAction.OnDeveloperProfileClick -> {
