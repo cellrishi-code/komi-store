@@ -30,7 +30,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import zed.rainxch.core.domain.model.repository.FavoriteRepo
+import zed.rainxch.core.domain.utils.RepoIdCodec
 import zed.rainxch.core.presentation.components.bars.KomiTopBar
 import zed.rainxch.core.presentation.components.bars.KomiTopBarSize
 import zed.rainxch.core.presentation.components.buttons.KomiButtonVariant
@@ -53,7 +53,7 @@ import zed.rainxch.githubstore.core.presentation.res.*
 @Composable
 fun FavouritesRoot(
     onNavigateBack: () -> Unit,
-    onNavigateToDetails: (repo: FavoriteRepo) -> Unit,
+    onNavigateToDetails: (repoId: Long, owner: String, repo: String, sourceHost: String?) -> Unit,
     onNavigateToDeveloperProfile: (username: String) -> Unit,
     onNavigateToImportStars: () -> Unit,
     viewModel: FavouritesViewModel = koinViewModel(),
@@ -69,7 +69,13 @@ fun FavouritesRoot(
                 }
 
                 is FavouritesAction.OnRepositoryClick -> {
-                    onNavigateToDetails(action.favouriteRepository)
+                    val repo = action.favouriteRepository
+                    onNavigateToDetails(
+                        repo.repoId,
+                        repo.repoOwner,
+                        repo.repoName,
+                        RepoIdCodec.sourceHostOf(repo.repoId, repo.repoUrl),
+                    )
                 }
 
                 is FavouritesAction.OnDeveloperProfileClick -> {

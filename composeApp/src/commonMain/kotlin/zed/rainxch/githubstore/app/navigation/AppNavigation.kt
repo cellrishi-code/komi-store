@@ -44,9 +44,6 @@ import zed.rainxch.apps.presentation.starred.StarredPickerRoot
 import zed.rainxch.auth.presentation.AuthenticationRoot
 import zed.rainxch.core.domain.isDesktop
 import zed.rainxch.core.domain.model.appearance.ContentWidth
-import zed.rainxch.core.domain.model.repository.FavoriteRepo
-import zed.rainxch.core.domain.model.repository.SeenRepo
-import zed.rainxch.core.domain.utils.RepositoryUrlParser
 import zed.rainxch.core.domain.model.repository.DiscoveryPlatform
 import zed.rainxch.core.presentation.components.adaptive.AdaptiveDetailArgs
 import zed.rainxch.core.presentation.components.adaptive.AdaptiveListDetailScaffold
@@ -716,14 +713,13 @@ fun AppNavigation(
                                     onNavigateBack = {
                                         navController.navigateUp()
                                     },
-                                    onNavigateToDetails = { repo: FavoriteRepo ->
-                                        val parsed = RepositoryUrlParser.parse(repo.repoUrl)
+                                    onNavigateToDetails = { repoId, owner, repo, sourceHost ->
                                         navController.navigate(
                                             GithubStoreGraph.DetailsScreen(
-                                                repositoryId = repo.repoId,
-                                                owner = parsed?.owner ?: repo.repoOwner,
-                                                repo = parsed?.repo ?: repo.repoName,
-                                                sourceHost = parsed?.source?.host?.takeUnless { it == "github.com" },
+                                                repositoryId = repoId,
+                                                owner = owner,
+                                                repo = repo,
+                                                sourceHost = sourceHost,
                                             ),
                                         )
                                     },
@@ -807,14 +803,13 @@ fun AppNavigation(
                                     onNavigateBack = {
                                         navController.navigateUp()
                                     },
-                                    onNavigateToDetails = { repo: SeenRepo ->
-                                        val parsed = RepositoryUrlParser.parse(repo.repoUrl)
+                                    onNavigateToDetails = { repoId, owner, repo, sourceHost ->
                                         navController.navigate(
                                             GithubStoreGraph.DetailsScreen(
-                                                repositoryId = repo.repoId,
-                                                owner = parsed?.owner ?: repo.repoOwner,
-                                                repo = parsed?.repo ?: repo.repoName,
-                                                sourceHost = parsed?.source?.host?.takeUnless { it == "github.com" },
+                                                repositoryId = repoId,
+                                                owner = owner,
+                                                repo = repo,
+                                                sourceHost = sourceHost,
                                             ),
                                         )
                                     },
