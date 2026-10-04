@@ -20,7 +20,8 @@ fun parseGithubUrls(text: String): ImmutableList<ParsedGithubLink> {
                 ParsedGithubLink(
                     owner = match.groupValues[1],
                     repo = match.groupValues[2].removeSuffix(".git"),
-                    fullUrl = "https://github.com/\${match.groupValues[1]}/\${match.groupValues[2].removeSuffix(".git")}",
+                    fullUrl = "https://github.com/" + match.groupValues[1] + "/" +
+                        match.groupValues[2].removeSuffix(".git"),
                 )
             }
 
@@ -30,13 +31,14 @@ fun parseGithubUrls(text: String): ImmutableList<ParsedGithubLink> {
                 ParsedGithubLink(
                     owner = match.groupValues[1],
                     repo = match.groupValues[2].removeSuffix(".git"),
-                    fullUrl = "https://github.com/\${match.groupValues[1]}/\${match.groupValues[2].removeSuffix(".git")}",
+                    fullUrl = "https://github.com/" + match.groupValues[1] + "/" +
+                        match.groupValues[2].removeSuffix(".git"),
                 )
             }
         }
 
     return (urlLinks + listOfNotNull(shorthandLink))
-        .distinctBy { "\${it.owner}/\${it.repo}" }
+        .distinctBy { it.owner + "/" + it.repo }
         .toImmutableList()
 }
 
@@ -45,5 +47,6 @@ fun isEntirelyGithubUrls(text: String): Boolean {
         text
             .replace(GITHUB_URL_REGEX, "")
             .replace(Regex("""[\s,;]+"""), "")
-    return stripped.isEmpty() && parseGithubUrls(text).isNotEmpty()
+    return (stripped.isEmpty() || GITHUB_SHORTHAND_REGEX.matches(text.trim())) &&
+        parseGithubUrls(text).isNotEmpty()
 }
