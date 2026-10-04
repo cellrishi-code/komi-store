@@ -45,6 +45,7 @@ import zed.rainxch.auth.presentation.AuthenticationRoot
 import zed.rainxch.core.domain.isDesktop
 import zed.rainxch.core.domain.model.appearance.ContentWidth
 import zed.rainxch.core.domain.model.repository.DiscoveryPlatform
+import zed.rainxch.core.domain.utils.RepositoryUrlParser
 import zed.rainxch.core.presentation.components.adaptive.AdaptiveDetailArgs
 import zed.rainxch.core.presentation.components.adaptive.AdaptiveListDetailScaffold
 import zed.rainxch.core.presentation.components.adaptive.rememberAdaptiveListDetailState
@@ -713,8 +714,16 @@ fun AppNavigation(
                                     onNavigateBack = {
                                         navController.navigateUp()
                                     },
-                                    onNavigateToDetails = {
-                                        navController.navigate(GithubStoreGraph.DetailsScreen(it))
+                                    onNavigateToDetails = { repoId, repoUrl ->
+                                        val reference = RepositoryUrlParser.parse(repoUrl)
+                                        navController.navigate(
+                                            GithubStoreGraph.DetailsScreen(
+                                                repositoryId = repoId,
+                                                owner = reference?.owner.orEmpty(),
+                                                repo = reference?.repo.orEmpty(),
+                                                sourceHost = reference?.source?.host?.takeUnless { it == "github.com" },
+                                            ),
+                                        )
                                     },
                                     onNavigateToDeveloperProfile = { username ->
                                         navController.navigate(
@@ -796,10 +805,14 @@ fun AppNavigation(
                                     onNavigateBack = {
                                         navController.navigateUp()
                                     },
-                                    onNavigateToDetails = { repoId ->
+                                    onNavigateToDetails = { repoId, repoUrl ->
+                                        val reference = RepositoryUrlParser.parse(repoUrl)
                                         navController.navigate(
                                             GithubStoreGraph.DetailsScreen(
                                                 repositoryId = repoId,
+                                                owner = reference?.owner.orEmpty(),
+                                                repo = reference?.repo.orEmpty(),
+                                                sourceHost = reference?.source?.host?.takeUnless { it == "github.com" },
                                             ),
                                         )
                                     },
