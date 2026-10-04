@@ -124,6 +124,30 @@ class AssetSelectorTest {
     }
 
     @Test
+    fun mobile_build_beats_leanback_build_with_same_abi() {
+        val assets =
+            listOf(
+                asset("webhtv-1.0-leanback-arm64-v8a.apk", size = 30_000_000L),
+                asset("webhtv-1.0-mobile-arm64-v8a.apk", size = 20_000_000L),
+            )
+        assertEquals("webhtv-1.0-mobile-arm64-v8a.apk", pick(assets))
+    }
+
+    @Test
+    fun unmarked_apk_remains_neutral_between_mobile_and_leanback() {
+        assertEquals(2, AssetSelector.deviceVariantRank("app-mobile-arm64-v8a.apk"))
+        assertEquals(1, AssetSelector.deviceVariantRank("app-arm64-v8a.apk"))
+        assertEquals(0, AssetSelector.deviceVariantRank("app-leanback-arm64-v8a.apk"))
+        assertEquals(1, AssetSelector.deviceVariantRank("app-x86_64.AppImage"))
+    }
+
+    @Test
+    fun mobile_keyword_requires_a_token_boundary() {
+        assertEquals(1, AssetSelector.deviceVariantRank("automobile-arm64-v8a.apk"))
+        assertEquals(2, AssetSelector.deviceVariantRank("app_mobile_arm64-v8a.apk"))
+    }
+
+    @Test
     fun empty_returns_null() {
         assertNull(pick(emptyList()))
     }
