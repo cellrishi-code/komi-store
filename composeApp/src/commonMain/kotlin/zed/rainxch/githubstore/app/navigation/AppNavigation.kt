@@ -435,13 +435,6 @@ fun AppNavigation(
                                                 ),
                                             )
                                         },
-                                        onNavigateToSearchByPlatform = { platform ->
-                                            navController.navigate(
-                                                GithubStoreGraph.SearchScreen(
-                                                    initialPlatform = platform.name,
-                                                ),
-                                            )
-                                        },
                                         onNavigateToAbout = { repoId, owner, repo, sourceHost, translateTo ->
                                             navController.navigate(
                                                 GithubStoreGraph.DetailsAboutScreen(
@@ -494,6 +487,7 @@ fun AppNavigation(
                                                     args.repo,
                                                     args.isComingFromUpdate,
                                                     args.sourceHost,
+                                                    args.packageName,
                                                 )
                                             },
                                     )
@@ -942,7 +936,7 @@ fun AppNavigation(
                                             onNavigateBack = {
                                                 navController.navigateUp()
                                             },
-                                            onNavigateToRepo = { repoId, sourceHost, owner, repo ->
+                                            onNavigateToRepo = { repoId, sourceHost, owner, repo, packageName ->
                                                 if (isExpanded) {
                                                     listDetailState.select(
                                                         AdaptiveDetailArgs(
@@ -951,6 +945,7 @@ fun AppNavigation(
                                                             sourceHost = sourceHost,
                                                             owner = owner,
                                                             repo = repo,
+                                                            packageName = packageName,
                                                         ),
                                                     )
                                                 } else {
@@ -961,6 +956,7 @@ fun AppNavigation(
                                                             sourceHost = sourceHost,
                                                             owner = owner.orEmpty(),
                                                             repo = repo.orEmpty(),
+                                                            packageName = packageName,
                                                         ),
                                                     )
                                                 }
