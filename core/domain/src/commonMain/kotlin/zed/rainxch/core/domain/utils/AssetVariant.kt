@@ -167,17 +167,133 @@ object AssetVariant {
         return versionPattern.replace(lower, "*")
     }
 
+    // The version a release tag carries, without the app name some repos put in front
+    // (auth-v4.4.25 -> 4.4.25). Null when the tag has no usable number (nightly, v2).
+    fun tagVersion(tag: String?): String? {
+        if (tag.isNullOrBlank()) return null
+        val lower = tag.trim().lowercase()
+        val start = TAG_VERSION.find(lower)?.range?.first ?: lower.indexOfFirst { it.isDigit() }
+        if (start < 0) return null
+        return lower.substring(start).takeIf { it.length >= 2 }
+    }
+
+    // The asset name with its own release's version blanked out, together with any build id
+    // next to it (a commit hash or build number, before or after). No guessing at how a
+    // project writes versions; null when the name doesn't carry the tag's version.
+    fun tagGlob(assetName: String, releaseTag: String?): String? {
+        val version = tagVersion(releaseTag) ?: return null
+        val lower = assetName.lowercase()
+        val range = releaseVersionRange(lower, version) ?: return null
+        return lower.replaceRange(range, "*")
+    }
+
+    // Two names are the same file family when either form agrees: today's version pattern,
+    // or each name with its own release's version blanked out. Stored globs use either form.
+    fun familyGlobs(assetName: String, releaseTag: String?): Set<String> =
+        setOfNotNull(deriveGlob(assetName), tagGlob(assetName, releaseTag))
+
+    fun tagStem(assetName: String, releaseTag: String?): String? =
+        tagGlob(assetName, releaseTag)
+            ?.let { extractBaseStem(it.replace('*', '-')) }
+            ?.takeIf { it.isNotEmpty() }
+
+    private fun releaseVersionRange(lower: String, version: String): IntRange? {
+        for (match in versionInName(version).findAll(lower)) {
+            val at = match.range.first
+            if (!startsCleanly(lower, at)) continue
+            var end = match.range.last + 1
+            while (true) {
+                val next = buildIdAfter(lower, end) ?: break
+                end = next
+            }
+            if (!endsCleanly(lower, end)) continue
+            val start = if (hasVersionPrefix(lower, at)) at - 1 else at
+            return (buildIdBefore(lower, start) ?: start) until end
+        }
+        return null
+    }
+
+    // Tags and file names often separate the same version differently (THUNDERBIRD_24_0b2
+    // ships thunderbird-24.0b2.apk, 4.5.0beta05 ships 4.5.0_beta05), so any separator
+    // stands for any other, and one may appear where digits meet letters.
+    private fun versionInName(version: String): Regex {
+        val pattern = StringBuilder()
+        var previous: Char? = null
+        for (c in version) {
+            when {
+                c in BUILD_ID_SEPARATORS -> pattern.append("[._+-]")
+                previous != null && previous !in BUILD_ID_SEPARATORS && previous.isDigit() != c.isDigit() ->
+                    pattern.append("[._-]?").append(Regex.escape(c.toString()))
+                else -> pattern.append(Regex.escape(c.toString()))
+            }
+            previous = c
+        }
+        return Regex(pattern.toString())
+    }
+
+    private fun startsCleanly(lower: String, at: Int): Boolean {
+        val before = lower.getOrNull(at - 1) ?: return true
+        if (before.isDigit()) return false
+        if (before.isLetter()) return hasVersionPrefix(lower, at)
+        return !(before == '.' && lower.getOrNull(at - 2)?.isDigit() == true)
+    }
+
+    // "v4.4.25": the v is part of the version when it stands alone before it.
+    private fun hasVersionPrefix(lower: String, at: Int): Boolean =
+        lower.getOrNull(at - 1) == 'v' && lower.getOrNull(at - 2)?.isLetterOrDigit() != true
+
+    private fun endsCleanly(lower: String, end: Int): Boolean {
+        val after = lower.getOrNull(end) ?: return true
+        if (after.isDigit()) return false
+        return !((after == '.' || after == '_') && lower.getOrNull(end + 1)?.isDigit() == true)
+    }
+
+    // End of a build id that follows the version at `from`, glued or after one separator.
+    private fun buildIdAfter(lower: String, from: Int): Int? {
+        val start = if (lower.getOrNull(from)?.let { it in BUILD_ID_SEPARATORS } == true) from + 1 else from
+        var end = start
+        while (end < lower.length && lower[end].isLetterOrDigit()) end++
+        return end.takeIf { isBuildId(lower.substring(start, end)) }
+    }
+
+    // Start of a build id written just before the version, followed by one separator.
+    private fun buildIdBefore(lower: String, versionAt: Int): Int? {
+        if (lower.getOrNull(versionAt - 1)?.let { it in BUILD_ID_SEPARATORS } != true) return null
+        val end = versionAt - 1
+        var start = end
+        while (start > 0 && lower[start - 1].isLetterOrDigit()) start--
+        return start.takeIf { isBuildId(lower.substring(start, end)) }
+    }
+
+    // A build number (3+ digits) or a short commit hash (6+ hex characters mixing letters and
+    // digits). Words such as arm64, v8a, x86 or release never qualify.
+    private fun isBuildId(token: String): Boolean =
+        (token.length >= 3 && token.all { it.isDigit() }) ||
+            (
+                token.length >= 6 &&
+                    token.all { it.isDigit() || it in 'a'..'f' } &&
+                    token.any { it.isDigit() } &&
+                    token.any { it.isLetter() }
+            )
+
+    private val TAG_VERSION = Regex("""\d+(?:[._]\d+)+""")
+    private val BUILD_ID_SEPARATORS = setOf('.', '-', '_', '+')
+
     fun versionMajor(name: String): Int? =
         VERSION_MAJOR.find(name)?.groupValues?.get(1)?.toIntOrNull()
 
     private val VERSION_MAJOR = Regex("""(?<![A-Za-z\d])v?(\d+)\.\d+""", RegexOption.IGNORE_CASE)
 
-    fun extract(assetName: String): String? {
+    fun extract(assetName: String, releaseTag: String? = null): String? {
         val withoutExt = assetName.substringBeforeLast('.')
-        val match = VERSION_SEGMENT.find(withoutExt) ?: return null
+        val tagRange = tagVersion(releaseTag)?.let { releaseVersionRange(withoutExt.lowercasePerChar(), it) }
+        val tailStart =
+            tagRange?.let { it.last + 1 }
+                ?: VERSION_SEGMENT.find(withoutExt)?.let { it.range.last + 1 }
+                ?: return null
         var tail =
             withoutExt
-                .substring(match.range.last + 1)
+                .substring(tailStart)
                 .trimStart(*LEADING_SEPARATORS)
                 .trim()
 
@@ -189,6 +305,9 @@ object AssetVariant {
         }
         return tail
     }
+
+    // String.lowercase() can lengthen a name ('İ' becomes two chars), shifting indices into the original.
+    private fun String.lowercasePerChar(): String = String(CharArray(length) { this[it].lowercaseChar() })
 
     private val VERSION_SEGMENT =
         Regex("[-_ ]v?\\d+(?:\\.\\d+)+(?=[-_. ]|$)", RegexOption.IGNORE_CASE)
@@ -206,6 +325,7 @@ object AssetVariant {
         pinnedVariant: String?,
         pinnedTokens: Set<String>? = null,
         pinnedGlob: String? = null,
+        releaseTag: String? = null,
     ): GithubAsset? {
 
         if (!pinnedTokens.isNullOrEmpty()) {
@@ -217,14 +337,15 @@ object AssetVariant {
 
         if (!pinnedGlob.isNullOrBlank()) {
             val match = assets.firstOrNull { asset ->
-                deriveGlob(asset.name) == pinnedGlob
+                pinnedGlob in familyGlobs(asset.name, releaseTag)
             }
             if (match != null) return match
         }
 
         val target = pinnedVariant?.trim()?.takeIf { it.isNotBlank() } ?: return null
         return assets.firstOrNull { asset ->
-            extract(asset.name)?.equals(target, ignoreCase = true) == true
+            extract(asset.name)?.equals(target, ignoreCase = true) == true ||
+                extract(asset.name, releaseTag)?.equals(target, ignoreCase = true) == true
         }
     }
 
@@ -242,9 +363,10 @@ object AssetVariant {
     fun deriveFromPickedAsset(
         pickedAssetName: String,
         siblingAssetCount: Int,
+        releaseTag: String? = null,
     ): String? {
         if (siblingAssetCount <= 1) return null
-        val variant = extract(pickedAssetName) ?: return null
+        val variant = extract(pickedAssetName, releaseTag) ?: return null
         return variant.takeIf { it.isNotEmpty() }
     }
 
@@ -257,11 +379,12 @@ object AssetVariant {
     fun fingerprintFromPickedAsset(
         pickedAssetName: String,
         siblingAssetCount: Int,
+        releaseTag: String? = null,
     ): VariantFingerprint? {
         if (siblingAssetCount <= 1) return null
-        val variant = extract(pickedAssetName)?.takeIf { it.isNotEmpty() }
+        val variant = extract(pickedAssetName, releaseTag)?.takeIf { it.isNotEmpty() }
         val tokens = extractTokens(pickedAssetName)
-        val glob = deriveGlob(pickedAssetName)
+        val glob = tagGlob(pickedAssetName, releaseTag) ?: deriveGlob(pickedAssetName)
 
         if (variant == null && tokens.isEmpty() && glob == null) return null
         return VariantFingerprint(variant = variant, tokens = tokens, glob = glob)

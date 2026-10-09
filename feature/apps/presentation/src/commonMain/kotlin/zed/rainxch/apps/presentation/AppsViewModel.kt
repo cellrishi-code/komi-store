@@ -262,12 +262,19 @@ class AppsViewModel(
 
     private fun autoCheckForUpdatesIfNeeded() {
         val now = System.currentTimeMillis()
-        if (now - lastAutoCheckTimestamp < UPDATE_CHECK_COOLDOWN_MS) {
-            logger.debug("Skipping auto-check: last check was ${(now - lastAutoCheckTimestamp) / 1000}s ago")
+        val lastCheck = maxOf(lastAutoCheckTimestamp, oldestTrackedCheck())
+        if (now - lastCheck < UPDATE_CHECK_COOLDOWN_MS) {
+            logger.debug("Skipping auto-check: last check was ${(now - lastCheck) / 1000}s ago")
             return
         }
         checkAllForUpdates()
     }
+
+    private fun oldestTrackedCheck(): Long =
+        _state.value.apps
+            .map { it.installedApp }
+            .filter { it.updateCheckEnabled }
+            .minOfOrNull { it.lastCheckedAt } ?: 0L
 
     private fun checkAllForUpdates() {
         viewModelScope.launch {
@@ -944,7 +951,7 @@ class AppsViewModel(
                 val variantOptions =
                     buildList {
                         preview.matchedAssets.forEach { asset ->
-                            val variant = AssetVariant.extract(asset.name)
+                            val variant = AssetVariant.extract(asset.name, preview.release?.tagName)
                             if (!variant.isNullOrEmpty()) {
                                 add(
                                     VariantOption(
@@ -1172,6 +1179,7 @@ class AppsViewModel(
                             pinnedVariant = app.preferredAssetVariant,
                             pinnedTokens = AssetVariant.deserializeTokens(app.preferredAssetTokens),
                             pinnedGlob = app.assetGlobPattern,
+                            releaseTag = latestRelease.tagName,
                         )
                     val primaryAsset =
                         variantMatch
@@ -1240,6 +1248,7 @@ class AppsViewModel(
                             displayAppName = app.appName,
                             installPolicy = policy,
                             releaseTag = latestRelease.tagName,
+                            releaseId = latestRelease.id,
                         ),
                     )
 
@@ -1273,7 +1282,11 @@ class AppsViewModel(
                     if (currentApp != null) {
                         installedAppsRepository.updateApp(
                             currentApp
-                                .markPending()
+                                .markPending(
+                                    releaseId = latestRelease.id,
+                                    assetId = primaryAsset.id,
+                                    assetDigest = primaryAsset.digest,
+                                )
                                 .withLatestSnapshot(
                                     version = latestVersion,
                                     assetName = latestAssetName,
@@ -1953,6 +1966,7 @@ class AppsViewModel(
                         linkValidationStatus = null,
                         linkStep = LinkStep.PickAsset,
                         linkInstallableAssets = installableAssets,
+                        linkAssetsReleaseTag = latestRelease.tagName,
                         linkAssetFilter = suggestedFilter.orEmpty(),
                         linkAssetFilterError = null,
                         linkFallbackToOlder = false,
@@ -1985,6 +1999,7 @@ class AppsViewModel(
         val selectedApp = _state.value.selectedDeviceApp ?: return
         val repoInfo = _state.value.fetchedRepoInfo ?: return
         val siblingCount = _state.value.linkInstallableAssets.size
+        val pickedReleaseTag = _state.value.linkAssetsReleaseTag
         val pickedIndex =
             _state.value.linkInstallableAssets
                 .indexOfFirst { it.id == asset.id }
@@ -2009,6 +2024,7 @@ class AppsViewModel(
                     fallbackToOlderReleases = fallbackToOlder,
                     pickedAssetName = asset.name,
                     pickedAssetSiblingCount = siblingCount,
+                    pickedAssetReleaseTag = pickedReleaseTag,
                     pickedAssetIndex = pickedIndex,
                     sourceHost = _state.value.linkSourceHost,
                 )

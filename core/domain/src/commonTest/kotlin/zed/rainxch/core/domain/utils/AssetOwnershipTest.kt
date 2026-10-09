@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import zed.rainxch.core.domain.model.account.github.GithubAsset
 import zed.rainxch.core.domain.model.account.github.GithubRelease
 import zed.rainxch.core.domain.model.installation.InstallSource
@@ -294,6 +295,31 @@ class AssetOwnershipTest {
             "Godot_v4.7.2-stable_android_editor.apk",
             AssetVariant.resolvePreferredAsset(sameApp, null, pinned)?.name,
         )
+    }
+
+    // wxxsfxyzm/InstallerX-Revived tags automatic builds with a commit hash after the version
+    // (26.09.8ede272) and names the APK the same way, next to a released 26.09.
+    @Test
+    fun aBuildIdInTheReleaseVersionIsTheSameApp() {
+        val released = "InstallerX-Revived-online-26.09.apk"
+        val autoBuild = "InstallerX-Revived-online-26.09.8ede272.apk"
+        assertEquals(AssetVariant.tagGlob(released, "26.09"), AssetVariant.tagGlob(autoBuild, "26.09.8ede272"))
+        assertTrue(AssetOwnership.isSameApp(released, autoBuild, "26.09", "26.09.8ede272"))
+    }
+
+    @Test
+    fun aBuildIdDoesNotHideTheNewestReleaseOfTheInstalledApp() {
+        val released = "InstallerX-Revived-online-26.09.apk"
+        val autoBuild = "InstallerX-Revived-online-26.09.8ede272.apk"
+        val installed = app("com.rosan.installer.x.revived", autoBuild, installedVersion = "26.09.8ede272")
+        val newest = listOf(asset(released))
+        val history = listOf(
+            release("26.09", newest),
+            release("26.09.8ede272", listOf(asset(autoBuild))),
+            release("26.05.01", listOf(asset("InstallerX-Revived-offline-26.05.01.apk"), asset("InstallerX-Revived-online-26.05.01.apk"))),
+            release("26.05", listOf(asset("InstallerX-Revived-offline-26.05.apk"), asset("InstallerX-Revived-online-26.05.apk"))),
+        )
+        assertEquals(installed, AssetOwnership.ownerOf(released, listOf(installed), newest, history, "26.09"))
     }
 
     @Test
