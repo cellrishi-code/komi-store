@@ -4,6 +4,7 @@ object UpdateVerdict {
     data class Installed(
         val tag: String?,
         val versionCode: Long,
+        val versionName: String? = null,
     )
 
     data class Stored(
@@ -107,6 +108,9 @@ object UpdateVerdict {
                 false
             }
 
+        val deviceRunsMatchedRelease =
+            !timestampTracked && VersionMath.isExactSameVersion(installed.versionName, matched.tag)
+
         val tagVerdict =
             when {
                 usedTimestampLogic -> timestampWouldReport
@@ -122,6 +126,7 @@ object UpdateVerdict {
         val isUpdateAvailable =
             when {
                 skipHolds -> false
+                deviceRunsMatchedRelease -> false
                 bound == null -> tagVerdict
                 else ->
                     decideBound(
@@ -142,6 +147,7 @@ object UpdateVerdict {
             isUpdateAvailable = isUpdateAvailable,
             skipBecameStale = skipBecameStale,
             codesAlreadyMatch = codesAlreadyMatch,
+            deviceRunsMatchedRelease = deviceRunsMatchedRelease,
         )
     }
 
@@ -149,7 +155,8 @@ object UpdateVerdict {
         codesAlreadyMatch: Boolean,
         installedTag: String?,
         matchedTag: String,
-    ): Boolean = installedTag != matchedTag && codesAlreadyMatch
+        deviceRunsMatchedRelease: Boolean = false,
+    ): Boolean = installedTag != matchedTag && (codesAlreadyMatch || deviceRunsMatchedRelease)
 
     fun isSameFile(
         installedAssetId: Long?,
@@ -178,5 +185,6 @@ object UpdateVerdict {
         val isUpdateAvailable: Boolean,
         val skipBecameStale: Boolean,
         val codesAlreadyMatch: Boolean,
+        val deviceRunsMatchedRelease: Boolean,
     )
 }
