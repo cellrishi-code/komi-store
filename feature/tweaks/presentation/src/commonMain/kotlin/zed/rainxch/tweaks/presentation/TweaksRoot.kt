@@ -132,6 +132,7 @@ fun TweaksRoot(
                 onNavigateToMirrorPicker = onNavigateToMirrorPicker,
                 onNavigateToHiddenRepositories = onNavigateToHiddenRepositories,
                 onNavigateToHostTokens = onNavigateToHostTokens,
+                onNavigateBack = onNavigateBack,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
         }
