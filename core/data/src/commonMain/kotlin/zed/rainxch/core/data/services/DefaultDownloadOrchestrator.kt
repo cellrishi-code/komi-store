@@ -3,6 +3,7 @@ package zed.rainxch.core.data.services
 import co.touchlab.kermit.Logger
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -423,7 +424,7 @@ class DefaultDownloadOrchestrator(
 
     override suspend fun cancel(packageName: String) {
         val job = stateMutex.withLock { activeJobs.remove(packageName) }
-        job?.cancel()
+        job?.cancelAndJoin()
 
         val entry = _downloads.value[packageName]
         if (entry != null) {
