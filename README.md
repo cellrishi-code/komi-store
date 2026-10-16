@@ -203,8 +203,8 @@ If you're interested in working together, reach out:
 
 ### Disclaimer
 
-Komi Store only helps you discover and download release assets that are already published on
-GitHub by third‑party developers.
+Komi Store helps you discover and download release assets published by third-party developers on
+GitHub and supported GitHub-compatible forges, including Codeberg and Forgejo.
 The contents, safety, and behavior of those downloads are entirely the responsibility of their
 respective authors and distributors, not this project.
 
